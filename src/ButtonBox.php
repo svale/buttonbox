@@ -24,6 +24,9 @@ use craft\events\PluginEvent;
 use craft\services\Fields;
 use craft\events\RegisterComponentTypesEvent;
 
+use markhuot\CraftQL\CraftQL;
+use markhuot\CraftQL\Events\GetFieldSchema;
+
 use yii\base\Event;
 
 /**
@@ -91,6 +94,15 @@ class ButtonBox extends Plugin
             }
         );
 
+        // Register with CraftQL
+        if (class_exists(CraftQL::class)) {
+            Event::on(ColoursField::class, 'craftQlGetFieldSchema', [$this, 'handleGetCraftQLSchema']);
+            Event::on(TextSizeField::class, 'craftQlGetFieldSchema', [$this, 'handleGetCraftQLSchema']);
+            Event::on(ButtonsField::class, 'craftQlGetFieldSchema', [$this, 'handleGetCraftQLSchema']);
+            Event::on(WidthField::class, 'craftQlGetFieldSchema', [$this, 'handleGetCraftQLSchema']);
+            Event::on(TriggersField::class, 'craftQlGetFieldSchema', [$this, 'handleGetCraftQLSchema']); // not really sensible to query, but for the sake of completnes
+        }
+
 /**
  * Logging in Craft involves using one of the following methods:
  *
@@ -110,6 +122,23 @@ class ButtonBox extends Plugin
  * http://www.yiiframework.com/doc-2.0/guide-runtime-logging.html
  */
         Craft::info(Craft::t('buttonbox', '{name} plugin loaded', ['name' => $this->name]), __METHOD__);
+    }
+
+    /**
+     *  Adds the fieldtype to the craftQL Schema
+     *
+     * @param GetFieldSchema $event
+     */
+    public function handleGetCraftQLSchema(GetFieldSchema $event)
+    {
+        $event->handled = true;
+        $field = $event->sender;
+
+        $event->schema
+            ->addStringField($field)
+            ->resolve(function ($root) use ($field) {
+                return $root->{$field->handle}->value;
+            });
     }
 
     // Protected Methods
